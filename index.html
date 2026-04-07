@@ -525,52 +525,61 @@
 <!-- ONLY CHANGE: API KEY + FIXED JS LOGIC -->
 <script>
 const API_KEY = "6fc7ab730ad632df5a169986dcef4805";
-const GEO_API = "https://wft-geo-db.p.rapidapi.com/v1/geo/cities";
 
 let currentUnit = localStorage.getItem("unit") || "metric";
 let isFetching = false;
 
-// 🔹 Headers for GeoDB (free tier key required)
-const geoHeaders = {
-  "X-RapidAPI-Key": "057a74b1b2msh57745b9b77d0361p1a790djsna38f70e79acb",
-  "X-RapidAPI-Host": "wft-geo-db.p.rapidapi.com"
-};
+// ✅ Ensure suggestions container exists (no UI change)
+let suggestionsBox = document.getElementById("suggestions");
+if (!suggestionsBox) {
+  suggestionsBox = document.createElement("div");
+  suggestionsBox.id = "suggestions";
+  suggestionsBox.style.position = "absolute";
+  suggestionsBox.style.background = "#111827";
+  suggestionsBox.style.width = "100%";
+  suggestionsBox.style.borderRadius = "10px";
+  suggestionsBox.style.marginTop = "5px";
+  suggestionsBox.style.zIndex = "10";
+  document.querySelector(".search-wrap").appendChild(suggestionsBox);
+}
 
-// 🔹 Search API (REAL suggestions)
+// ✅ FREE City Suggestions (No API key)
 document.getElementById("cityInput").addEventListener("input", async function () {
   const query = this.value.trim();
-  if (query.length < 2) return;
+  if (query.length < 2) {
+    suggestionsBox.innerHTML = "";
+    return;
+  }
 
   try {
-    const res = await fetch(`${GEO_API}?namePrefix=${query}&limit=5`, {
-      headers: geoHeaders
-    });
-
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`
+    );
     const data = await res.json();
 
-    const suggestions = data.data.map(c =>
-      `<div onclick="selectCity('${c.city}')">${c.city}, ${c.countryCode}</div>`
-    ).join('');
-
-    document.getElementById("suggestions").innerHTML = suggestions;
-
-  } catch (e) {
-    console.log("Suggestion API error");
+    suggestionsBox.innerHTML = data.map(place =>
+      `<div style="padding:8px;cursor:pointer"
+        onclick="selectCity('${place.display_name.replace(/'/g, "")}')">
+        ${place.display_name}
+      </div>`
+    ).join("");
+  } catch {
+    suggestionsBox.innerHTML = "";
   }
 });
 
 function selectCity(city) {
   document.getElementById("cityInput").value = city;
-  document.getElementById("suggestions").innerHTML = "";
+  suggestionsBox.innerHTML = "";
   getWeather(city);
 }
 
-// 🔹 Main Weather Fetch
-async function getWeather(cityParam=null) {
+// ✅ Main Weather Fetch
+async function getWeather(cityParam = null) {
   if (isFetching) return;
 
   const city = cityParam || document.getElementById("cityInput").value.trim();
-  if (!city) return showError("Enter city");
+  if (!city) return showError("Enter city name");
 
   isFetching = true;
   setState("loading");
@@ -585,60 +594,59 @@ async function getWeather(cityParam=null) {
     if (!res.ok) throw new Error();
 
     const data = await res.json();
-
-    if (parseInt(data.cod) !== 200) {
-      showError(data.message);
-      isFetching = false;
-      return;
-    }
+    if (data.cod != 200) throw new Error(data.message);
 
     renderWeather(data);
-
-    // 🔥 Fetch 7-day forecast
     getForecast(data.coord.lat, data.coord.lon);
 
   } catch {
-    showError("API/Network error");
+    showError("City not found / API issue");
   }
 
   isFetching = false;
 }
 
-// 🔹 7-Day Forecast
+// ✅ 7-Day Forecast (derived from 5-day API)
 async function getForecast(lat, lon) {
   try {
     const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lon}&units=${currentUnit}&exclude=minutely,hourly,alerts&appid=${API_KEY}`
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=${currentUnit}&appid=${API_KEY}`
     );
 
     const data = await res.json();
 
-    renderForecast(data.daily.slice(1, 8)); // next 7 days
+    const daily = {};
+    data.list.forEach(item => {
+      const date = item.dt_txt.split(" ")[0];
+      if (!daily[date]) daily[date] = item;
+    });
+
+    renderForecast(Object.values(daily).slice(0, 7));
 
   } catch {
     console.log("Forecast error");
   }
 }
 
-// 🔹 Render Forecast (NO UI BREAK)
+// ✅ Render Forecast
 function renderForecast(days) {
   let html = `<div class="forecast-row">`;
 
   days.forEach(d => {
-    const date = new Date(d.dt * 1000).toLocaleDateString('en-IN', { weekday: 'short' });
+    const date = new Date(d.dt * 1000)
+      .toLocaleDateString('en-IN', { weekday: 'short' });
 
     html += `
       <div class="forecast-card">
         <p>${date}</p>
         <img src="https://openweathermap.org/img/wn/${d.weather[0].icon}.png">
-        <p>${Math.round(d.temp.day)}°</p>
+        <p>${Math.round(d.main.temp)}°</p>
       </div>
     `;
   });
 
   html += `</div>`;
 
-  // Inject WITHOUT disturbing layout
   let container = document.getElementById("forecastContainer");
   if (!container) {
     container = document.createElement("div");
@@ -649,48 +657,70 @@ function renderForecast(days) {
   container.innerHTML = html;
 }
 
-// 🔹 Unit Toggle
-function toggleUnit() {
-  currentUnit = currentUnit === "metric" ? "imperial" : "metric";
-  localStorage.setItem("unit", currentUnit);
-
-  const lastCity = localStorage.getItem("lastCity");
-  if (lastCity) getWeather(lastCity);
-}
-
-// 🔹 Auto Location
-function detectLocation() {
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const { latitude, longitude } = pos.coords;
-
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=${currentUnit}&appid=${API_KEY}`
-    );
-
-    const data = await res.json();
-    renderWeather(data);
-    getForecast(latitude, longitude);
-  });
-}
-
-// 🔹 Existing Functions (UNCHANGED)
+// ✅ Render Weather Data
 function renderWeather(d) {
+  setState("success");
+
   document.getElementById('cityDisplay').textContent =
     `${d.name}, ${d.sys.country}`;
 
+  document.getElementById('dateLabel').textContent =
+    new Date().toDateString();
+
   document.getElementById('tempDisplay').innerHTML =
-    `${Math.round(d.main.temp)}°`;
+    `${Math.round(d.main.temp)}<span class="temp-unit">°</span>`;
+
+  document.getElementById('weatherIcon').src =
+    `https://openweathermap.org/img/wn/${d.weather[0].icon}@2x.png`;
 
   document.getElementById('condition').textContent =
     d.weather[0].description;
+
+  document.getElementById('feelsLike').textContent =
+    `Feels like ${Math.round(d.main.feels_like)}°`;
+
+  document.getElementById('humidity').innerHTML =
+    `${d.main.humidity}<span class="stat-unit">%</span>`;
+
+  document.getElementById('pressure').innerHTML =
+    `${d.main.pressure}<span class="stat-unit">hPa</span>`;
+
+  document.getElementById('windSpeed').innerHTML =
+    `${Math.round(d.wind.speed * 3.6)}<span class="stat-unit">km/h</span>`;
+
+  document.getElementById('visibility').innerHTML =
+    `${(d.visibility / 1000).toFixed(1)}<span class="stat-unit">km</span>`;
+
+  document.getElementById('sunrise').textContent =
+    new Date(d.sys.sunrise * 1000).toLocaleTimeString();
+
+  document.getElementById('sunset').textContent =
+    new Date(d.sys.sunset * 1000).toLocaleTimeString();
 }
 
-function setState(state) {}
+// ✅ UI State Manager
+function setState(state) {
+  document.getElementById("loadingState").classList.remove("active");
+  document.getElementById("weatherData").classList.remove("visible");
+  document.getElementById("placeholder").style.display = "none";
+  document.getElementById("errorMsg").classList.remove("visible");
+
+  if (state === "loading") {
+    document.getElementById("loadingState").classList.add("active");
+  }
+  if (state === "success") {
+    document.getElementById("weatherData").classList.add("visible");
+  }
+}
+
+// ✅ Error Handling
 function showError(msg) {
-  alert(msg);
+  const el = document.getElementById("errorMsg");
+  el.textContent = msg;
+  el.classList.add("visible");
 }
 
-// 🔹 Load Last City
+// ✅ Load Last City
 window.onload = () => {
   const lastCity = localStorage.getItem("lastCity");
   if (lastCity) getWeather(lastCity);
