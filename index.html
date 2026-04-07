@@ -504,14 +504,13 @@
     </div><!-- /weather-data -->
   </div><!-- /card -->
  
-  <footer>Powered by OpenWeatherMap API &nbsp;·&nbsp; BCA Project 2025–26</footer>
+  <footer> 2026 </footer>
  
 </div>
  
 
 <!-- ONLY CHANGE: API KEY + FIXED JS LOGIC -->
 <script>
-  // ── STAR FIELD ──
   const starsEl = document.getElementById('stars');
   for (let i = 0; i < 80; i++) {
     const s = document.createElement('div');
@@ -527,7 +526,6 @@
     starsEl.appendChild(s);
   }
 
-  // ── API ──
   const API_KEY = "6fc7ab730ad632df5a169986dcef4805";
   let isFetching = false;
 
@@ -560,17 +558,21 @@
     isFetching = true;
     setState('loading');
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${API_KEY}`;
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
 
-      // ✅ FIX 1: HTTP check
-      if (!res.ok) throw new Error("HTTP error");
+      if (!res.ok) {
+        throw new Error("API response error");
+      }
 
       const data = await res.json();
 
-      // ✅ FIX 2: cod handling
       if (parseInt(data.cod) !== 200) {
         showError(data.message || 'City not found');
         isFetching = false;
@@ -580,8 +582,11 @@
       renderWeather(data);
 
     } catch (err) {
-      console.error(err);
-      showError('Unable to fetch weather data. Check API key or network.');
+      if (err.name === "AbortError") {
+        showError("Request timeout. Try again.");
+      } else {
+        showError("Network/API issue. Check connection.");
+      }
     }
 
     isFetching = false;
