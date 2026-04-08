@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SkyWatch — Ultimate Forecast</title>
+  <title>SkyWatch — Intelligence Dashboard</title>
 
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -13,71 +13,81 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --deep: #020408;
-      --card-bg: rgba(255, 255, 255, 0.04);
+      --card-bg: rgba(0, 0, 0, 0.4);
       --card-border: rgba(255, 255, 255, 0.1);
       --accent: #38bdf8;
       --text: #f8fafc;
       --muted: #94a3b8;
+      --bg-grad: linear-gradient(180deg, #020408 0%, #0f172a 100%);
     }
 
-    body.light-mode {
-      --deep: #f1f5f9;
-      --card-bg: #ffffff;
-      --card-border: #e2e8f0;
-      --text: #0f172a;
-      --muted: #64748b;
+    body { 
+      height: 100vh; width: 100vw; 
+      background: var(--bg-grad); 
+      color: var(--text); 
+      font-family: 'DM Sans', sans-serif; 
+      overflow: hidden; 
+      display: flex; flex-direction: column;
+      transition: background 1s ease;
     }
 
-    body { height: 100vh; width: 100vw; background: var(--deep); color: var(--text); font-family: 'DM Sans', sans-serif; overflow: hidden; display: flex; flex-direction: column; transition: 0.3s; }
-    .app { height: 100%; width: 100%; max-width: 1400px; margin: 0 auto; padding: 1.5vh 20px; display: flex; flex-direction: column; gap: 1.5vh; }
+    /* Dynamic Weather Backgrounds */
+    body.clear { background: linear-gradient(180deg, #0ea5e9 0%, #38bdf8 100%); }
+    body.clouds { background: linear-gradient(180deg, #64748b 0%, #94a3b8 100%); }
+    body.rain { background: linear-gradient(180deg, #1e293b 0%, #334155 100%); }
+    body.night { background: linear-gradient(180deg, #020617 0%, #0f172a 100%); }
+
+    .app { height: 100%; width: 100%; max-width: 1600px; margin: 0 auto; padding: 1.5vh 20px; display: flex; flex-direction: column; gap: 1.5vh; position: relative; z-index: 1; }
     
     header { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    .brand { font-family: 'DM Serif Display', serif; font-size: 1.8rem; color: var(--accent); }
+    .brand { font-family: 'DM Serif Display', serif; font-size: 1.8rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
 
-    .toggle-btn { background: var(--card-bg); border: 1px solid var(--card-border); padding: 8px 15px; border-radius: 20px; color: var(--text); cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+    .search-area { width: 100%; max-width: 500px; margin: 0 auto; position: relative; z-index: 1000; }
+    .search-box { display: flex; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50px; backdrop-filter: blur(20px); }
+    .search-box input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 24px; color: #fff; }
+    .search-box button { background: #fff; border: none; padding: 6px 20px; margin: 4px; border-radius: 50px; color: #000; font-weight: 700; cursor: pointer; }
 
-    .search-area { width: 100%; max-width: 450px; margin: 0 auto; position: relative; z-index: 1000; }
-    .search-box { display: flex; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 50px; backdrop-filter: blur(15px); }
-    .search-box input { flex: 1; background: transparent; border: none; outline: none; padding: 10px 20px; color: var(--text); }
-    .search-box button { background: var(--accent); border: none; padding: 6px 18px; margin: 4px; border-radius: 50px; color: #000; font-weight: 700; cursor: pointer; }
-
-    #suggestions { position: absolute; top: 110%; left: 0; width: 100%; background: var(--card-bg); border-radius: 12px; display: none; max-height: 120px; overflow-y: auto; backdrop-filter: blur(20px); border: 1px solid var(--card-border); }
+    #suggestions { position: absolute; top: 110%; left: 0; width: 100%; background: #0f172a; border-radius: 12px; display: none; max-height: 150px; overflow-y: auto; border: 1px solid var(--card-border); }
     #suggestions div { padding: 10px 20px; cursor: pointer; border-bottom: 1px solid var(--card-border); font-size: 0.85rem; }
 
-    .main-grid { flex: 1; display: grid; grid-template-columns: 420px 1fr; gap: 20px; min-height: 0; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; }
+    .main-grid { flex: 1; display: grid; grid-template-columns: 460px 1fr; gap: 20px; min-height: 0; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; backdrop-filter: blur(10px); }
     
-    .w-panel { display: none; height: 100%; flex-direction: column; padding: 20px; overflow-y: auto; }
+    .w-panel { display: none; height: 100%; flex-direction: column; padding: 24px; overflow-y: auto; }
     .w-panel.active { display: flex; }
-    
-    /* Sun Section */
-    .sun-row { display: flex; justify-content: space-around; margin: 15px 0; padding: 15px; background: rgba(56, 189, 248, 0.05); border-radius: 15px; }
-    .sun-box { text-align: center; }
-    .sun-icon { font-size: 1.2rem; display: block; }
-    .sun-time { font-size: 0.9rem; font-weight: 700; margin-top: 5px; }
 
-    /* Forecast Section */
-    .forecast-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; }
-    .f-day { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; text-align: center; border: 1px solid var(--card-border); }
-    .f-name { font-size: 0.65rem; text-transform: uppercase; color: var(--muted); }
-    .f-temp { font-weight: 700; font-size: 0.9rem; margin: 4px 0; }
+    /* Alert Banner */
+    #alertBanner { background: #ef4444; color: white; padding: 8px 15px; border-radius: 12px; margin-bottom: 15px; font-size: 0.75rem; font-weight: 700; display: none; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-    #map { height: 100%; width: 100%; }
+    /* Info Grid */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 15px 0; }
+    .info-box { background: rgba(255,255,255,0.05); padding: 14px; border-radius: 18px; border: 1px solid var(--card-border); }
+    .info-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .info-val { font-size: 1.2rem; font-weight: 700; }
 
-    @media (max-width: 900px) { body { overflow-y: auto; height: auto; } .main-grid { grid-template-columns: 1fr; } #map { height: 300px; } }
+    /* AQI Badge */
+    .aqi-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-top: 5px; }
+
+    .sun-row { display: flex; justify-content: space-around; margin: 10px 0; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 20px; border: 1px solid var(--card-border); }
+    .forecast-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 20px; }
+    .f-item { text-align: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 15px; border: 1px solid var(--card-border); }
+
+    #map { height: 100%; width: 100%; filter: contrast(1.1) brightness(0.9); }
+
+    @media (max-width: 900px) { body { overflow-y: auto; height: auto; } .main-grid { grid-template-columns: 1fr; } #map { height: 350px; } }
   </style>
 </head>
 <body>
 
 <div class="app">
   <header>
-    <div class="brand">SkyWatch</div>
-    <button class="toggle-btn" onclick="toggleMode()">🌓 Day/Night Map</button>
+    <div class="brand">SkyWatch Pro</div>
   </header>
 
   <div class="search-area">
     <div class="search-box">
-      <input id="cityInput" type="text" placeholder="Search location..." autocomplete="off">
+      <input id="cityInput" type="text" placeholder="Search City (e.g. Nagrota Bagwan)..." autocomplete="off">
       <button onclick="getWeather()">Search</button>
     </div>
     <div id="suggestions"></div>
@@ -86,25 +96,35 @@
   <div class="main-grid">
     <div class="card">
       <div id="placeholder" style="height:100%; display:flex; align-items:center; justify-content:center; color:var(--muted); padding:40px; text-align:center;">
-        Select a city for sun cycle & 5-day forecast
+        Awaiting coordinates for intelligence briefing...
       </div>
       
       <div id="weatherPanel" class="w-panel">
+        <div id="alertBanner">⚠️ SEVERE WEATHER ALERT IN EFFECT</div>
+
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
-            <p id="cityTitle" style="color:var(--accent); font-weight:bold; text-transform:uppercase; font-size:0.75rem; letter-spacing:1.5px;"></p>
-            <h1 id="tempVal" style="font-family:'DM Serif Display'; font-size: 3.5rem; line-height:1;">--°</h1>
-            <p id="wDesc" style="text-transform:capitalize; margin-top:5px;"></p>
+            <p id="cityTitle" style="color:var(--accent); font-weight:bold; letter-spacing:1px;"></p>
+            <h1 id="tempVal" style="font-family:'DM Serif Display'; font-size: 4rem; line-height:1; margin:5px 0;">--°</h1>
+            <div id="aqiBox" class="aqi-badge" style="background:#22c55e;">AQI: --</div>
           </div>
-          <img id="wIcon" src="" style="width:80px;">
+          <img id="wIcon" src="" style="width:90px;">
+        </div>
+
+        <div class="info-grid">
+          <div class="info-box"><div class="info-lbl">Feels Like</div><div class="info-val" id="feelsVal">--</div></div>
+          <div class="info-box"><div class="info-lbl">Air Quality</div><div class="info-val" id="aqiVal">--</div></div>
+          <div class="info-box"><div class="info-lbl">Wind Speed</div><div class="info-val" id="windVal">--</div></div>
+          <div class="info-box"><div class="info-lbl">Dew Point</div><div class="info-val" id="dewVal">--</div></div>
+          <div class="info-box"><div class="info-lbl">Pressure</div><div class="info-val" id="presVal">--</div></div>
+          <div class="info-box"><div class="info-lbl">Humidity</div><div class="info-val" id="humVal">--</div></div>
         </div>
 
         <div class="sun-row">
-          <div class="sun-box"><span class="sun-icon">🌅</span><span class="sun-time" id="sunrise">--:--</span><p style="font-size:0.6rem; color:var(--muted);">SUNRISE</p></div>
-          <div class="sun-box"><span class="sun-icon">🌇</span><span class="sun-time" id="sunset">--:--</span><p style="font-size:0.6rem; color:var(--muted);">SUNSET</p></div>
+          <div style="text-align:center;"><span style="font-size:1.3rem;">🌅</span><span id="sunrise" style="display:block; font-weight:700;">--:--</span></div>
+          <div style="text-align:center;"><span style="font-size:1.3rem;">🌇</span><span id="sunset" style="display:block; font-weight:700;">--:--</span></div>
         </div>
 
-        <p style="font-size: 0.7rem; font-weight: 700; color: var(--muted); margin-top: 10px;">5-DAY ATMOSPHERIC OUTLOOK</p>
         <div class="forecast-grid" id="forecastGrid"></div>
       </div>
     </div>
@@ -115,27 +135,11 @@
 
 <script>
   const API_KEY = '6fc7ab730ad632df5a169986dcef4805';
-  let isNight = false;
   let currentMarker = null;
 
-  const map = L.map('map', { center: [20, 78], zoom: 5, zoomControl: false, attributionControl: false });
-  
-  const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-  const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
-  
-  satLayer.addTo(map);
-
-  function toggleMode() {
-    isNight = !isNight;
-    document.body.classList.toggle('light-mode');
-    if(isNight) {
-      map.removeLayer(satLayer);
-      darkLayer.addTo(map);
-    } else {
-      map.removeLayer(darkLayer);
-      satLayer.addTo(map);
-    }
-  }
+  const map = L.map('map', { center: [32.105, 76.379], zoom: 10, zoomControl: false, attributionControl: false });
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png').addTo(map);
 
   map.on('click', (e) => fetchWeather(e.latlng.lat, e.latlng.lng));
 
@@ -144,23 +148,45 @@
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lon]).addTo(map);
 
-    // Current Weather
-    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
-    const d = await res.json();
-
-    // 5 Day Forecast
-    const fRes = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
-    const fData = await fRes.json();
-
-    updateUI(d, fData);
-    map.flyTo([lat, lon], 12);
+    try {
+      const [curr, fore, aqi] = await Promise.all([
+        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`).then(r => r.json()),
+        fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`).then(r => r.json()),
+        fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`).then(r => r.json())
+      ]);
+      updateUI(curr, fore, aqi);
+      map.flyTo([lat, lon], 12);
+    } catch(e) { console.error("Data error", e); }
   }
 
-  function updateUI(d, f) {
-    document.getElementById('cityTitle').innerText = d.name;
+  function updateUI(d, f, a) {
+    const mainWeather = d.weather[0].main.toLowerCase();
+    document.body.className = mainWeather; // Set Dynamic Background
+
+    document.getElementById('cityTitle').innerText = d.name || "Station Beta";
     document.getElementById('tempVal').innerText = Math.round(d.main.temp) + "°";
-    document.getElementById('wDesc').innerText = d.weather[0].description;
     document.getElementById('wIcon').src = `https://openweathermap.org/img/wn/${d.weather[0].icon}@2x.png`;
+    
+    // Hyper-Local Data
+    document.getElementById('feelsVal').innerText = Math.round(d.main.feels_like) + "°";
+    document.getElementById('windVal').innerText = (d.wind.speed * 3.6).toFixed(1) + " km/h";
+    document.getElementById('presVal').innerText = d.main.pressure + " hPa";
+    document.getElementById('humVal').innerText = d.main.humidity + "%";
+    
+    // Dew Point Calculation (Approximation)
+    const dewPoint = d.main.temp - ((100 - d.main.humidity) / 5);
+    document.getElementById('dewVal').innerText = Math.round(dewPoint) + "°";
+
+    // AQI Logic
+    const aqiVal = a.list[0].main.aqi;
+    const aqiMap = {1: 'Good', 2: 'Fair', 3: 'Moderate', 4: 'Poor', 5: 'Hazardous'};
+    const aqiColors = {1: '#22c55e', 2: '#eab308', 3: '#f97316', 4: '#ef4444', 5: '#7f1d1d'};
+    document.getElementById('aqiVal').innerText = aqiMap[aqiVal];
+    document.getElementById('aqiBox').innerText = `AQI: ${aqiMap[aqiVal]}`;
+    document.getElementById('aqiBox').style.background = aqiColors[aqiVal];
+
+    // Alerts (Simulation for this demo based on extreme conditions)
+    document.getElementById('alertBanner').style.display = (d.wind.speed > 15 || d.main.temp > 40) ? 'block' : 'none';
 
     const formatTime = (ts) => new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.getElementById('sunrise').innerText = formatTime(d.sys.sunrise);
@@ -168,15 +194,13 @@
 
     const grid = document.getElementById('forecastGrid');
     grid.innerHTML = "";
-    // Filter to get roughly one entry per day
-    const daily = f.list.filter((val, index) => index % 8 === 0); 
-    daily.forEach(day => {
+    f.list.filter((_, i) => i % 8 === 0).forEach(day => {
       const date = new Date(day.dt * 1000).toLocaleDateString('en', { weekday: 'short' });
       grid.innerHTML += `
-        <div class="f-day">
-          <div class="f-name">${date}</div>
-          <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png" style="width:30px;">
-          <div class="f-temp">${Math.round(day.main.temp)}°</div>
+        <div class="f-item">
+          <div style="font-size:0.6rem; color:var(--muted);">${date}</div>
+          <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png" style="width:25px;">
+          <div style="font-weight:700; font-size:0.8rem;">${Math.round(day.main.temp)}°</div>
         </div>
       `;
     });
@@ -184,7 +208,7 @@
     document.getElementById('weatherPanel').classList.add('active');
   }
 
-  // Search Logic (reuse from previous versions)
+  // Search Logic
   const input = document.getElementById('cityInput');
   const suggs = document.getElementById('suggestions');
   input.addEventListener('input', async () => {
@@ -205,8 +229,7 @@
 
   function getWeather() {
     const val = input.value;
-    if(val) fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${val}`)
-      .then(r => r.json()).then(d => d[0] && fetchWeather(d[0].lat, d[0].lon));
+    if(val) fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${val}`).then(r => r.json()).then(d => d[0] && fetchWeather(d[0].lat, d[0].lon));
   }
 </script>
 </body>
