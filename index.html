@@ -1,22 +1,20 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SkyWatch — India Official Map Edition</title>
+  <title>SkyWatch — Satellite Edition</title>
 
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --deep: #05070a;
-      --card-bg: rgba(255, 255, 255, 0.03);
-      --card-border: rgba(255, 255, 255, 0.08);
+      --deep: #020408;
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --card-border: rgba(255, 255, 255, 0.1);
       --accent: #38bdf8;
       --text: #f8fafc;
       --muted: #94a3b8;
@@ -38,8 +36,8 @@
     .brand { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 5vh, 2.8rem); color: var(--accent); }
 
     .search-area { width: 100%; max-width: 500px; margin: 0 auto; position: relative; z-index: 1000; flex-shrink: 0; }
-    .search-box { display: flex; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 50px; backdrop-filter: blur(10px); }
-    .search-box input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 20px; color: #fff; font-size: 1rem; }
+    .search-box { display: flex; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 50px; backdrop-filter: blur(15px); }
+    .search-box input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 24px; color: #fff; font-size: 1rem; }
     .search-box button { background: var(--accent); border: none; padding: 8px 24px; margin: 4px; border-radius: 50px; color: #000; font-weight: 700; cursor: pointer; }
 
     #suggestions { 
@@ -48,14 +46,14 @@
       border-radius: 12px; display: none; max-height: 150px; overflow-y: auto; 
     }
     #suggestions div { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
-    #suggestions div:hover { background: rgba(56, 189, 248, 0.1); }
+    #suggestions div:hover { background: rgba(56, 189, 248, 0.15); }
 
     .main-grid { 
       flex: 1; display: grid; grid-template-columns: 360px 1fr; 
       gap: 25px; min-height: 0;
     }
 
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     
     .w-panel { display: none; height: 100%; flex-direction: column; }
     .w-panel.active { display: flex; }
@@ -64,10 +62,12 @@
     
     .stats-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--card-border); }
     .stat-item { padding: 20px; border-right: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); }
-    .stat-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; }
+    .stat-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
     .stat-val { font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-top: 4px; }
 
-    #map { height: 100%; width: 100%; background: #080a0f; }
+    /* Custom Leaflet Darkening */
+    #map { height: 100%; width: 100%; background: #000; }
+    .leaflet-container { background: #000 !important; }
 
     @media (max-width: 900px) {
       body { overflow-y: auto; height: auto; }
@@ -79,11 +79,11 @@
 <body>
 
 <div class="app">
-  <header><div class="brand">SkyWatch</div></header>
+  <header><div class="brand">SkyWatch Satellite</div></header>
 
   <div class="search-area">
     <div class="search-box">
-      <input id="cityInput" type="text" placeholder="Search Indian cities..." autocomplete="off">
+      <input id="cityInput" type="text" placeholder="Search a location..." autocomplete="off">
       <button onclick="getWeather()">Search</button>
     </div>
     <div id="suggestions"></div>
@@ -92,7 +92,7 @@
   <div class="main-grid">
     <div class="card">
       <div id="placeholder" style="height:100%; display:flex; align-items:center; justify-content:center; color:var(--muted); padding:40px; text-align:center;">
-        Search a city to view atmospheric data
+        Drop a pin on the satellite map to analyze the atmosphere
       </div>
       
       <div id="weatherPanel" class="w-panel">
@@ -102,7 +102,7 @@
             <h1 id="tempVal" class="temp-big">--°</h1>
             <img id="wIcon" src="" style="width:70px;">
           </div>
-          <p id="wDesc" style="text-transform:capitalize; color:var(--text);"></p>
+          <p id="wDesc" style="text-transform:capitalize; color:var(--text); font-size: 1.1rem;"></p>
         </div>
         <div class="stats-grid">
           <div class="stat-item"><div class="stat-label">Humidity</div><div class="stat-val" id="humVal">--</div></div>
@@ -121,17 +121,21 @@
 
 <script>
   const API_KEY = '6fc7ab730ad632df5a169986dcef4805';
+  let currentMarker = null;
 
-  // Map Initialization focused on India
+  // Initialize Map
   const map = L.map('map', { 
-    center: [22.9734, 78.6569], 
-    zoom: 5, 
+    center: [32.105, 76.379], 
+    zoom: 12, 
     zoomControl: false, 
     attributionControl: false 
   });
 
-  // Using a clean, high-performance dark tile set
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+  // Satellite Tile Layer (Esri World Imagery)
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+  
+  // Optional: Add a subtle road/label overlay for better navigation
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png').addTo(map);
 
   map.on('click', (e) => fetchWeather(e.latlng.lat, e.latlng.lng));
 
@@ -140,7 +144,7 @@
 
   input.addEventListener('input', async () => {
     if(input.value.length < 3) { suggs.style.display = 'none'; return; }
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${input.value}&countrycodes=in`);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${input.value}`);
     const data = await res.json();
     if(data.length > 0) {
       suggs.innerHTML = data.map(i => `<div onclick="selectCity('${i.display_name.replace(/'/g, "")}', ${i.lat}, ${i.lon})">${i.display_name}</div>`).join('');
@@ -156,10 +160,14 @@
 
   async function fetchWeather(lat, lon) {
     document.getElementById('placeholder').style.display = 'none';
+    
+    if (currentMarker) map.removeLayer(currentMarker);
+    currentMarker = L.marker([lat, lon]).addTo(map);
+
     const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
     const d = await res.json();
 
-    document.getElementById('cityTitle').innerText = d.name;
+    document.getElementById('cityTitle').innerText = d.name || "Unknown Location";
     document.getElementById('tempVal').innerText = Math.round(d.main.temp) + "°";
     document.getElementById('humVal').innerText = d.main.humidity + "%";
     document.getElementById('windVal').innerText = Math.round(d.wind.speed * 3.6) + " km/h";
@@ -169,15 +177,14 @@
     document.getElementById('wIcon').src = `https://openweathermap.org/img/wn/${d.weather[0].icon}@2x.png`;
 
     document.getElementById('weatherPanel').classList.add('active');
-    map.flyTo([lat, lon], 10, { duration: 2 });
+    map.flyTo([lat, lon], 14, { duration: 2 });
   }
 
   function getWeather() {
     const val = input.value;
-    if(val) fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${val}&countrycodes=in`)
+    if(val) fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${val}`)
       .then(r => r.json()).then(d => d[0] && fetchWeather(d[0].lat, d[0].lon));
   }
 </script>
 </body>
 </html>
-```
