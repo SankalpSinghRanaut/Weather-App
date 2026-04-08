@@ -1,13 +1,4 @@
-To make the entire application fit perfectly within a single screen without needing to scroll or having elements enlarged, I have shifted to a **Viewport Height (`vh`) based layout**.
 
-This ensures that the header, search bar, and main content grid are mathematically constrained to fit within **100% of the browser window height**, regardless of screen size.
-
-### The "Single-Screen" Logic:
-* **Grid Height:** The main content area is set to `flex: 1`, forcing it to take up all remaining space between the header and the bottom of the screen.
-* **Box Constraints:** The map and weather card are locked to the same height (`100%` of their container) to prevent one from being longer than the other.
-* **Scrollable Stats:** If for any reason the data exceeds the box size (on very small laptops), only the internal stats will scroll, keeping the "site" itself fixed.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
