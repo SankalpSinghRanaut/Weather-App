@@ -1,9 +1,19 @@
+To make the entire application fit perfectly within a single screen without needing to scroll or having elements enlarged, I have shifted to a **Viewport Height (`vh`) based layout**.
+
+This ensures that the header, search bar, and main content grid are mathematically constrained to fit within **100% of the browser window height**, regardless of screen size.
+
+### The "Single-Screen" Logic:
+* **Grid Height:** The main content area is set to `flex: 1`, forcing it to take up all remaining space between the header and the bottom of the screen.
+* **Box Constraints:** The map and weather card are locked to the same height (`100%` of their container) to prevent one from being longer than the other.
+* **Scrollable Stats:** If for any reason the data exceeds the box size (on very small laptops), only the internal stats will scroll, keeping the "site" itself fixed.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkyWatch — 3D Atmospheric View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SkyWatch — Single Screen UI</title>
 
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -22,120 +32,125 @@
       --muted:       #7c8db0;
     }
 
+    /* ── LOCK BODY TO VIEWPORT ── */
     body {
-      min-height: 100vh;
+      height: 100vh;
+      width: 100vw;
       background: var(--deep);
       color: var(--text);
       font-family: 'DM Sans', sans-serif;
-      overflow-x: hidden;
-      perspective: 1200px; /* Essential for 3D layout effects */
+      overflow: hidden; /* Disables page scrolling */
+      display: flex;
+      flex-direction: column;
     }
 
-    /* ── ANIMATED BACKGROUND ── */
     body::before {
-      content:''; position:fixed; inset:0; z-index:0;
-      background: radial-gradient(circle at 20% 20%, rgba(56,189,248,0.15) 0%, transparent 40%),
-                  radial-gradient(circle at 80% 80%, rgba(99,102,241,0.1) 0%, transparent 40%);
+      content:''; position:fixed; inset:0; z-index:-1;
+      background: radial-gradient(circle at 20% 20%, rgba(56,189,248,0.1) 0%, transparent 40%),
+                  radial-gradient(circle at 80% 80%, rgba(99,102,241,0.08) 0%, transparent 40%);
     }
 
     .app {
-      position:relative; z-index:1;
-      max-width: 1100px;
+      height: 100%;
+      width: 100%;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 50px 20px;
+      padding: 2vh 20px;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      gap: 2vh;
     }
 
-    header { text-align:center; margin-bottom:50px; }
+    /* ── COMPACT HEADER ── */
+    header { text-align:center; flex-shrink: 0; }
     .brand {
       font-family:'DM Serif Display', serif;
-      font-size: 3.5rem;
+      font-size: clamp(2rem, 5vh, 3rem);
+      line-height: 1;
       background: linear-gradient(to right, var(--accent), var(--accent-purple));
       -webkit-background-clip:text; -webkit-text-fill-color:transparent;
     }
 
-    /* ── SEARCH & SCROLL FIX ── */
+    /* ── SEARCH AREA ── */
     .search-wrap {
-      width:100%; max-width:550px; 
-      margin-bottom: 90px; /* LARGE GAP MAINTAINED */
+      width:100%; max-width:500px; 
+      margin: 0 auto;
       position: relative;
       z-index: 1000;
+      flex-shrink: 0;
     }
     .search-inner {
       display:flex; background:var(--card-bg); border:1px solid var(--card-border);
-      border-radius:50px; backdrop-filter:blur(15px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      border-radius:50px; backdrop-filter:blur(10px);
     }
     .search-inner input {
       flex:1; background:transparent; border:none; outline:none;
-      padding:18px 28px; color:var(--text); font-size:1.05rem;
+      padding: 12px 20px; color:var(--text); font-size: 0.95rem;
     }
     .search-inner button {
       background: linear-gradient(135deg, #0ea5e9, #6366f1);
-      border:none; padding:12px 30px; margin:6px; border-radius:50px;
-      color:#fff; font-weight:600; cursor:pointer; transition: 0.3s;
+      border:none; padding:8px 20px; margin:4px; border-radius:50px;
+      color:#fff; font-weight:600; cursor:pointer;
     }
-    .search-inner button:hover { transform: scale(1.05); }
 
     #suggestions {
       position: absolute; top: 100%; left: 0; width: 100%;
       background: #0b1120; border: 1px solid var(--card-border);
-      border-radius: 20px; margin-top: 12px;
-      max-height: 165px; /* SCROLL FEATURE IF > 2 OPTIONS */
+      border-radius: 15px; margin-top: 8px;
+      max-height: 120px; /* SCROLL IF > 2 OPTIONS */
       overflow-y: auto; display: none;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
-    #suggestions div { padding: 14px 24px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    #suggestions div:hover { background: rgba(125,211,252,0.1); }
+    #suggestions div { padding: 10px 20px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
 
-    /* ── 3D GRID LAYOUT ── */
+    /* ── FIXED MAIN GRID ── */
     .main-grid {
-      width:100%; display:grid;
-      grid-template-columns: 1fr 1.3fr;
-      gap: 40px; /* INCREASED GAP BETWEEN BOXES */
-      align-items: start;
+      flex: 1; /* Takes up remaining height */
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 25px;
+      min-height: 0; /* Important for flex child height limiting */
     }
 
     .card {
       background:var(--card-bg); border:1px solid var(--card-border);
-      border-radius:32px; backdrop-filter:blur(25px);
-      transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+      border-radius:24px; overflow:hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
-    .card:hover { transform: translateY(-5px) rotateX(2deg); }
-
-    /* ── 3D MAP STYLING ── */
-    .map-container {
-      position: relative;
-      height: 500px;
-      border-radius: 32px;
-      overflow: hidden;
-      /* The 3D effect: Tilted perspective */
-      transform: rotateX(10deg) rotateY(-5deg);
-      box-shadow: -20px 20px 50px rgba(0,0,0,0.5);
-      border: 1px solid var(--card-border);
-    }
-    #map { height: 100%; width: 100%; z-index: 1; filter: saturate(1.2); }
 
     /* ── WEATHER CONTENT ── */
-    .card-top { padding:40px; }
-    .temp-big { font-family:'DM Serif Display',serif; font-size:5.5rem; line-height:1; color: var(--accent); }
+    .w-content { display: none; height: 100%; flex-direction: column; }
+    .w-content.show { display: flex; }
+
+    .card-top { padding: 4% 6%; flex-shrink: 0; }
+    .temp-big { font-family:'DM Serif Display',serif; font-size: clamp(3rem, 10vh, 5rem); line-height:1; color: var(--accent); }
     
-    .stats { display:grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--card-border); }
-    .stat { padding:25px; border-right: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); }
-    .stat-lbl { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
-    .stat-val { font-family:'DM Serif Display',serif; font-size:1.6rem; margin-top:5px; }
+    .stats { 
+      flex: 1;
+      display:grid; grid-template-columns: 1fr 1fr; 
+      border-top: 1px solid var(--card-border);
+      overflow-y: auto; /* Internal scroll only if needed */
+    }
+    .stat { padding: 15px 20px; border-right: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); }
+    .stat-lbl { font-size:0.65rem; color:var(--muted); text-transform:uppercase; }
+    .stat-val { font-family:'DM Serif Display',serif; font-size:1.3rem; margin-top:2px; }
 
-    .w-content { display: none; }
-    .w-content.show { display: block; animation: fadeIn 0.8s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    /* ── 3D MAP VIEW ── */
+    .map-container { height: 100%; width: 100%; position: relative; }
+    #map { height: 100%; width: 100%; z-index: 1; }
 
-    .state-block { padding: 80px 40px; text-align: center; color: var(--muted); font-size: 1.1rem; }
+    .state-block { 
+      height: 100%; display: flex; flex-direction: column; 
+      justify-content: center; align-items: center; 
+      color: var(--muted); padding: 20px; text-align: center;
+    }
 
-    @media (max-width: 900px) {
-      .main-grid { grid-template-columns: 1fr; }
-      .map-container { transform: none; height: 350px; }
+    @media (max-width: 800px) {
+      body { overflow-y: auto; height: auto; }
+      .app { height: auto; }
+      .main-grid { grid-template-columns: 1fr; height: auto; }
+      .map-container { height: 300px; }
     }
   </style>
 </head>
@@ -144,12 +159,11 @@
 <div class="app">
   <header>
     <div class="brand">SkyWatch</div>
-    <p style="color:var(--muted); font-size:0.85rem; letter-spacing:4px; font-weight:500;">PREMIUM WEATHER ENGINE</p>
   </header>
 
   <div class="search-wrap">
     <div class="search-inner">
-      <input id="cityInput" type="text" placeholder="Explore a city..." autocomplete="off">
+      <input id="cityInput" type="text" placeholder="Search city..." autocomplete="off">
       <button onclick="getWeather()">Search</button>
     </div>
     <div id="suggestions"></div>
@@ -158,30 +172,29 @@
   <div class="main-grid">
     <div class="card">
       <div id="statePlaceholder" class="state-block">
-        <span style="font-size: 3rem; display:block; margin-bottom:15px;">🌍</span>
-        Select a global destination
+        <p>Enter a location to view live data</p>
       </div>
       
       <div class="w-content" id="wContent">
         <div class="card-top">
-          <p id="cityDisplay" style="color:var(--accent-purple); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;"></p>
-          <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+          <p id="cityDisplay" style="color:var(--accent-purple); font-weight:600; font-size: 0.9rem; margin-bottom: 5px;"></p>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
             <div id="tempDisplay" class="temp-big">--°</div>
-            <img id="weatherIcon" src="" style="width:110px; filter: drop-shadow(0 0 15px var(--accent));">
+            <img id="weatherIcon" src="" style="width: 20%; max-width: 80px;">
           </div>
-          <p id="condition" style="font-size:1.2rem; color:var(--text); margin-top:10px; text-transform:capitalize;"></p>
+          <p id="condition" style="color:var(--text); text-transform:capitalize; font-size: 1rem;"></p>
         </div>
         
         <div class="stats">
           <div class="stat"><div class="stat-lbl">Humidity</div><div class="stat-val" id="hum">--</div></div>
-          <div class="stat"><div class="stat-lbl">Wind</div><div class="stat-val" id="wind">--</div></div>
+          <div class="stat"><div class="stat-lbl">Wind Speed</div><div class="stat-val" id="wind">--</div></div>
           <div class="stat"><div class="stat-lbl">Pressure</div><div class="stat-val" id="pres">--</div></div>
           <div class="stat"><div class="stat-lbl">Visibility</div><div class="stat-val" id="vis">--</div></div>
         </div>
       </div>
     </div>
 
-    <div class="map-container">
+    <div class="card map-container">
       <div id="map"></div>
     </div>
   </div>
@@ -190,27 +203,23 @@
 <script>
   const API_KEY = '6fc7ab730ad632df5a169986dcef4805';
   
-  // Initialize Map with Dark Voyager tiles for high contrast
+  // Setup Map
   const map = L.map('map', { center: [20, 0], zoom: 2, attributionControl: false });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png').addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-  // Map Click Logic
   map.on('click', (e) => fetchWeather(e.latlng.lat, e.latlng.lng));
 
-  // Search Logic
   const input = document.getElementById('cityInput');
   const suggs = document.getElementById('suggestions');
 
   input.addEventListener('input', async () => {
     if(input.value.length < 3) { suggs.style.display = 'none'; return; }
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${input.value}`);
-      const data = await res.json();
-      if(data.length > 0) {
-        suggs.innerHTML = data.map(i => `<div onclick="selectCity('${i.display_name.replace(/'/g, "")}', ${i.lat}, ${i.lon})">${i.display_name}</div>`).join('');
-        suggs.style.display = 'block';
-      }
-    } catch(e) { console.error(e); }
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${input.value}`);
+    const data = await res.json();
+    if(data.length > 0) {
+      suggs.innerHTML = data.map(i => `<div onclick="selectCity('${i.display_name.replace(/'/g, "")}', ${i.lat}, ${i.lon})">${i.display_name}</div>`).join('');
+      suggs.style.display = 'block';
+    }
   });
 
   function selectCity(name, lat, lon) {
@@ -231,12 +240,10 @@
     document.getElementById('pres').innerText = d.main.pressure + " hPa";
     document.getElementById('vis').innerText = (d.visibility/1000).toFixed(1) + " km";
     document.getElementById('condition').innerText = d.weather[0].description;
-    document.getElementById('weatherIcon').src = `https://openweathermap.org/img/wn/${d.weather[0].icon}@4x.png`;
+    document.getElementById('weatherIcon').src = `https://openweathermap.org/img/wn/${d.weather[0].icon}@2x.png`;
 
     document.getElementById('wContent').classList.add('show');
-    
-    // Zoom in animation
-    map.flyTo([lat, lon], 12, { animate: true, duration: 1.5 });
+    map.flyTo([lat, lon], 10);
   }
 
   function getWeather() {
@@ -247,3 +254,4 @@
 </script>
 </body>
 </html>
+```
