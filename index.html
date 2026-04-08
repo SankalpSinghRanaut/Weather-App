@@ -463,7 +463,6 @@
   <footer>2026</footer>
 
 </div><!-- /app -->
-
 <script>
 /* ═══════════════════════════════════════════════
    STARS
@@ -480,11 +479,11 @@
 })();
 
 /* ═══════════════════════════════════════════════
-   MAP SETUP (Leaflet, free tiles)
+   MAP SETUP
 ═══════════════════════════════════════════════ */
 const map = L.map('map', {
   center:[20.5937, 78.9629],
-  zoom:4, zoomControl:true,
+  zoom:4,
   attributionControl:false
 });
 
@@ -492,220 +491,165 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
   maxZoom:19
 }).addTo(map);
 
-// Custom SVG pin marker
 const pinIcon = L.divIcon({
   className:'',
-  html:`<svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">
+  html:`<svg width="32" height="42" viewBox="0 0 32 42">
     <ellipse cx="16" cy="40" rx="6" ry="2" fill="rgba(0,0,0,.35)"/>
     <path d="M16 2C9.37 2 4 7.37 4 14c0 9 12 26 12 26S28 23 28 14C28 7.37 22.63 2 16 2z"
       fill="#7dd3fc" stroke="#38bdf8" stroke-width="1.5"/>
     <circle cx="16" cy="14" r="5" fill="#0b0f1a"/>
   </svg>`,
-  iconSize:[32,42], iconAnchor:[16,42], popupAnchor:[0,-40]
+  iconSize:[32,42],
+  iconAnchor:[16,42]
 });
 
-let marker = null;
+let marker=null;
 
-function updateMap(lat, lon, cityName, temp, icon){
+function updateMap(lat, lon, city, temp, icon){
   if(marker) map.removeLayer(marker);
 
   marker = L.marker([lat,lon],{icon:pinIcon})
     .addTo(map)
-    .bindPopup(`
-      <div style="display:flex;align-items:center;gap:8px;min-width:140px">
-        <img src="https://openweathermap.org/img/wn/${icon}.png" style="width:36px;height:36px">
-        <div>
-          <div style="font-weight:500;color:#7dd3fc">${cityName}</div>
-          <div style="color:#eef2ff;font-size:1.05rem">${temp}°C</div>
-        </div>
-      </div>
-    `)
+    .bindPopup(`<b>${city}</b><br>${temp}°C`)
     .openPopup();
 
-  map.flyTo([lat,lon],11,{duration:1.4});
+  map.flyTo([lat,lon],11,{duration:1.2});
 }
 
 /* ═══════════════════════════════════════════════
-   CITY SUGGESTIONS (Nominatim, free)
+   MAP CLICK → FETCH WEATHER
 ═══════════════════════════════════════════════ */
-const suggestionsBox = document.getElementById('suggestions');
-const cityInput      = document.getElementById('cityInput');
+map.on('click', async function(e){
+  const lat = e.latlng.lat;
+  const lon = e.latlng.lng;
 
-let suggestTimer = null;
-cityInput.addEventListener('input', function(){
-  clearTimeout(suggestTimer);
-  const q = this.value.trim();
-  if(q.length < 2){ suggestionsBox.innerHTML=''; return; }
-  suggestTimer = setTimeout(async ()=>{
-    try{
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&featuretype=city`);
-      const d = await r.json();
-      suggestionsBox.innerHTML = d.length
-        ? d.map(p=>`<div onclick="pickCity('${p.display_name.replace(/'/g,"&#39;")}')">${p.display_name}</div>`).join('')
-        : '';
-    }catch{ suggestionsBox.innerHTML=''; }
-  }, 280);
-});
-
-// Close on outside click
-document.addEventListener('click', e=>{
-  if(!e.target.closest('.search-wrap')) suggestionsBox.innerHTML='';
-});
-
-cityInput.addEventListener('keydown', e=>{
-  if(e.key==='Enter'){ suggestionsBox.innerHTML=''; getWeather(); }
-});
-
-function pickCity(name){
-  cityInput.value = name;
-  suggestionsBox.innerHTML = '';
-  getWeather();
-}
-
-/* ═══════════════════════════════════════════════
-   STATE MANAGEMENT
-═══════════════════════════════════════════════ */
-function showState(name){
-  ['statePlaceholder','stateLoading','stateError'].forEach(id=>{
-    document.getElementById(id).classList.remove('active');
-  });
-  document.getElementById('wContent').classList.remove('show');
-
-  if(name==='placeholder') document.getElementById('statePlaceholder').classList.add('active');
-  if(name==='loading')     document.getElementById('stateLoading').classList.add('active');
-  if(name==='error')       document.getElementById('stateError').classList.add('active');
-  if(name==='data')        document.getElementById('wContent').classList.add('show');
-}
-
-function showError(msg){
-  document.getElementById('errorMsg').textContent = msg;
-  showState('error');
-}
-
-/* ═══════════════════════════════════════════════
-   MAIN WEATHER FETCH
-═══════════════════════════════════════════════ */
-const API_KEY = '6fc7ab730ad632df5a169986dcef4805';
-let fetching = false;
-
-async function getWeather(cityParam){
   if(fetching) return;
-  const city = (cityParam || cityInput.value).trim();
-  if(!city){ showError('Please enter a city name.'); showState('error'); return; }
 
   fetching = true;
   showState('loading');
-  localStorage.setItem('lastCity', city);
 
   try{
-    const res  = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${API_KEY}`);
-    const data = await res.json();
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+    );
+    const geoData = await geoRes.json();
 
-    if(data.cod==404){ showError(`"${city}" not found — check spelling.`); fetching=false; return; }
-    if(data.cod!=200){ showError('API error. Please try again.'); fetching=false; return; }
+    const name = geoData.display_name || "Selected Location";
 
-    renderWeather(data);
-    fetchForecast(data.coord.lat, data.coord.lon);
-    updateMap(data.coord.lat, data.coord.lon, `${data.name}, ${data.sys.country}`,
-              Math.round(data.main.temp), data.weather[0].icon);
+    getWeatherByCoords(lat, lon, name);
 
-    document.getElementById('weatherCard').classList.add('loaded');
-
-  }catch(e){
-    showError('Network error. Check your connection.');
+  }catch{
+    showError("Map click failed");
+    fetching = false;
   }
-  fetching = false;
+});
+
+/* ═══════════════════════════════════════════════
+   CITY SUGGESTIONS
+═══════════════════════════════════════════════ */
+const suggestionsBox = document.getElementById('suggestions');
+const cityInput = document.getElementById('cityInput');
+
+let timer;
+cityInput.addEventListener('input', function(){
+  clearTimeout(timer);
+  const q=this.value.trim();
+  if(q.length<2){suggestionsBox.innerHTML='';return;}
+
+  timer=setTimeout(async()=>{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`);
+    const d=await r.json();
+
+    suggestionsBox.innerHTML=d.map(p=>
+      `<div onclick="pickCity('${p.display_name.replace(/'/g,"")}',${p.lat},${p.lon})">${p.display_name}</div>`
+    ).join('');
+  },300);
+});
+
+function pickCity(name,lat,lon){
+  cityInput.value=name;
+  suggestionsBox.innerHTML='';
+  getWeatherByCoords(lat,lon,name);
+}
+
+/* ═══════════════════════════════════════════════
+   WEATHER LOGIC
+═══════════════════════════════════════════════ */
+const API_KEY='6fc7ab730ad632df5a169986dcef4805';
+let fetching=false;
+
+async function getWeather(){
+  const city=cityInput.value.trim();
+  if(!city) return;
+
+  const geo=await fetch(`https://nominatim.openstreetmap.org/search?q=${city}&format=json&limit=1`);
+  const data=await geo.json();
+
+  if(!data.length){showError("City not found");return;}
+
+  getWeatherByCoords(data[0].lat,data[0].lon,data[0].display_name);
+}
+
+async function getWeatherByCoords(lat,lon,label){
+  try{
+    const res=await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
+    const d=await res.json();
+
+    renderWeather(d);
+    fetchForecast(lat,lon);
+    updateMap(lat,lon,label,Math.round(d.main.temp),d.weather[0].icon);
+
+    localStorage.setItem("lastCity",label);
+    cityInput.value=label;
+
+    showState('data');
+  }catch{
+    showError("API error");
+  }
+  fetching=false;
 }
 
 /* ═══════════════════════════════════════════════
    RENDER WEATHER
 ═══════════════════════════════════════════════ */
 function renderWeather(d){
-  const tz = d.timezone;
-
-  set('cityDisplay',  `${d.name}, ${d.sys.country}`);
-  set('dateDisplay',  new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}));
-
-  document.getElementById('tempDisplay').innerHTML =
-    `${Math.round(d.main.temp)}<span class="temp-unit-sup">°C</span>`;
-
-  document.getElementById('weatherIcon').src =
-    `https://openweathermap.org/img/wn/${d.weather[0].icon}@2x.png`;
-
-  set('condition',  d.weather[0].description);
-  set('feelsLike',  `Feels like ${Math.round(d.main.feels_like)}°C`);
-
-  setH('humidity',   `${d.main.humidity}<span class="su">%</span>`);
-  setH('pressure',   `${d.main.pressure}<span class="su">hPa</span>`);
-  setH('windSpeed',  `${Math.round(d.wind.speed*3.6)}<span class="su">km/h</span>`);
-  setH('visibility', `${d.visibility ? (d.visibility/1000).toFixed(1):'--'}<span class="su">km</span>`);
-
-  set('sunrise', fmtTime(d.sys.sunrise, tz));
-  set('sunset',  fmtTime(d.sys.sunset,  tz));
-
-  showState('data');
-}
-
-function set(id,v)  { document.getElementById(id).textContent = v; }
-function setH(id,v) { document.getElementById(id).innerHTML  = v; }
-
-function fmtTime(unix, offset){
-  const d = new Date((unix+offset)*1000);
-  let h = d.getUTCHours(), m = d.getUTCMinutes();
-  const ap = h>=12?'PM':'AM'; h=h%12||12;
-  return `${h}:${String(m).padStart(2,'0')} ${ap}`;
+  document.getElementById('cityDisplay').textContent=d.name;
+  document.getElementById('tempDisplay').innerHTML=`${Math.round(d.main.temp)}°`;
+  document.getElementById('condition').textContent=d.weather[0].description;
 }
 
 /* ═══════════════════════════════════════════════
-   5-DAY FORECAST
+   FORECAST
 ═══════════════════════════════════════════════ */
 async function fetchForecast(lat,lon){
-  try{
-    const res  = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
-    const data = await res.json();
+  const r=await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
+  const d=await r.json();
 
-    // One reading per day (noon preferred)
-    const seen = {}, days = [];
-    for(const item of data.list){
-      const date = item.dt_txt.split(' ')[0];
-      if(!seen[date]){
-        seen[date]=true;
-        days.push(item);
-        if(days.length===6) break;
-      }
-    }
-    renderForecast(days.slice(1)); // skip today
+  const days=d.list.filter((_,i)=>i%8===0).slice(1,6);
 
-  }catch(e){ console.warn('Forecast fetch failed',e); }
-}
-
-function renderForecast(days){
-  const box = document.getElementById('forecastContainer');
-  if(!days.length){ box.innerHTML=''; return; }
-
-  const cards = days.map(d=>{
-    const label = new Date(d.dt*1000).toLocaleDateString('en-IN',{weekday:'short'});
-    return `
-      <div class="fc">
-        <div class="fc-day">${label}</div>
-        <img class="fc-icon" src="https://openweathermap.org/img/wn/${d.weather[0].icon}.png" alt="">
-        <div class="fc-temp">${Math.round(d.main.temp)}°</div>
-      </div>`;
-  }).join('');
-
-  box.innerHTML = `
-    <div class="forecast-title">5-Day Forecast</div>
-    <div class="forecast-row">${cards}</div>`;
+  document.getElementById('forecastContainer').innerHTML=days.map(day=>
+    `<div>${new Date(day.dt*1000).toDateString()} - ${Math.round(day.main.temp)}°</div>`
+  ).join('');
 }
 
 /* ═══════════════════════════════════════════════
-   INIT — reload last searched city
+   STATE
 ═══════════════════════════════════════════════ */
-(function init(){
-  showState('placeholder');
-  const last = localStorage.getItem('lastCity');
-  if(last){ cityInput.value = last; getWeather(last); }
-})();
+function showState(s){
+  document.getElementById('stateLoading').style.display=s==='loading'?'block':'none';
+}
+
+function showError(msg){
+  alert(msg);
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+window.onload=()=>{
+  const last=localStorage.getItem("lastCity");
+  if(last) cityInput.value=last;
+};
 </script>
 
 </body>
