@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SkyWatch — 3D Vector Edition</title>
+  <title>SkyWatch 3D — Fixed View</title>
 
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.js"></script>
@@ -12,139 +11,58 @@
 
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
     :root {
       --deep: #05070a;
       --card-bg: rgba(255, 255, 255, 0.03);
       --card-border: rgba(255, 255, 255, 0.08);
       --accent: #38bdf8;
-      --accent-grad: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
       --text: #f8fafc;
       --muted: #94a3b8;
     }
-
     body {
-      height: 100vh;
-      width: 100vw;
-      background: var(--deep);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      height: 100vh; width: 100vw; background: var(--deep);
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      overflow: hidden; display: flex; flex-direction: column;
     }
+    .app { height: 100%; width: 100%; max-width: 1400px; margin: 0 auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+    
+    header { text-align: center; }
+    .brand { font-family: 'DM Serif Display', serif; font-size: 2.5rem; color: var(--accent); }
 
-    /* ── APP WRAPPER ── */
-    .app {
-      height: 100%;
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 1.5vh 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5vh;
-    }
+    .search-area { width: 100%; max-width: 500px; margin: 0 auto; position: relative; z-index: 1000; }
+    .search-box { display: flex; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 50px; backdrop-filter: blur(10px); }
+    .search-box input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 20px; color: #fff; }
+    .search-box button { background: var(--accent); border: none; padding: 8px 20px; margin: 4px; border-radius: 50px; color: #000; font-weight: 700; cursor: pointer; }
 
-    header { text-align: center; flex-shrink: 0; }
-    .brand {
-      font-family: 'DM Serif Display', serif;
-      font-size: clamp(1.8rem, 4.5vh, 2.8rem);
-      background: var(--accent-grad);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
+    #suggestions { position: absolute; top: 110%; left: 0; width: 100%; background: #0f172a; border-radius: 12px; display: none; max-height: 150px; overflow-y: auto; }
+    #suggestions div { padding: 10px 20px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; }
 
-    /* ── SEARCH AREA ── */
-    .search-area {
-      width: 100%; max-width: 520px;
-      margin: 0 auto;
-      position: relative;
-      z-index: 1000;
-      flex-shrink: 0;
-    }
-    .search-box {
-      display: flex; background: var(--card-bg); border: 1px solid var(--card-border);
-      border-radius: 50px; backdrop-filter: blur(12px);
-    }
-    .search-box input {
-      flex: 1; background: transparent; border: none; outline: none;
-      padding: 12px 24px; color: var(--text); font-size: 0.95rem;
-    }
-    .search-box button {
-      background: var(--accent-grad); border: none; padding: 8px 24px;
-      margin: 4px; border-radius: 50px; color: #fff; font-weight: 600; cursor: pointer;
-    }
-
-    /* SCROLLABLE SUGGESTIONS */
-    #suggestions {
-      position: absolute; top: 110%; left: 0; width: 100%;
-      background: #0f172a; border: 1px solid var(--card-border);
-      border-radius: 16px; max-height: 140px; overflow-y: auto; display: none;
-    }
-    #suggestions div { padding: 12px 20px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    #suggestions div:hover { background: rgba(56, 189, 248, 0.15); }
-    #suggestions::-webkit-scrollbar { width: 4px; }
-    #suggestions::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
-
-    /* ── MAIN CONTENT GRID ── */
-    .main-grid {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 380px 1fr;
-      gap: 20px;
-      min-height: 0;
-    }
-
-    .card {
-      background: var(--card-bg); border: 1px solid var(--card-border);
-      border-radius: 24px; overflow: hidden; height: 100%;
-      display: flex; flex-direction: column;
-    }
-
-    /* ── WEATHER DATA ── */
+    .main-grid { flex: 1; display: grid; grid-template-columns: 350px 1fr; gap: 20px; min-height: 0; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 24px; overflow: hidden; }
+    
+    /* Stats Styling */
     .w-panel { display: none; height: 100%; flex-direction: column; }
     .w-panel.active { display: flex; }
-
-    .w-top { padding: 25px; flex-shrink: 0; }
-    .city-label { color: var(--accent); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
-    .temp-display { font-family: 'DM Serif Display', serif; font-size: clamp(3.5rem, 10vh, 5.5rem); line-height: 1; margin: 10px 0; }
-    .desc { text-transform: capitalize; color: var(--muted); font-size: 1.1rem; }
-
-    .stats-grid {
-      flex: 1; display: grid; grid-template-columns: 1fr 1fr;
-      border-top: 1px solid var(--card-border);
-    }
+    .w-top { padding: 25px; }
+    .temp-big { font-family: 'DM Serif Display', serif; font-size: 4rem; line-height: 1; margin: 10px 0; color: var(--accent); }
+    .stats-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--card-border); }
     .stat-item { padding: 20px; border-right: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); }
-    .stat-item:nth-child(2n) { border-right: none; }
-    .stat-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; margin-bottom: 5px; }
-    .stat-val { font-family: 'DM Serif Display', serif; font-size: 1.4rem; }
+    .stat-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; }
+    .stat-val { font-family: 'DM Serif Display', serif; font-size: 1.2rem; }
 
-    /* ── 3D MAP ── */
-    #map { height: 100%; width: 100%; }
+    #map { height: 100%; width: 100%; background: #000; }
 
-    .empty-state {
-      height: 100%; display: flex; flex-direction: column; justify-content: center;
-      align-items: center; text-align: center; color: var(--muted); padding: 40px;
-    }
-
-    @media (max-width: 900px) {
-      body { overflow-y: auto; height: auto; }
-      .main-grid { grid-template-columns: 1fr; height: auto; }
-      .app { height: auto; }
-      #map { height: 400px; }
-    }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; overflow-y: auto; } #map { height: 300px; } }
   </style>
 </head>
 <body>
 
 <div class="app">
-  <header>
-    <div class="brand">SkyWatch 3D</div>
-  </header>
+  <header><div class="brand">SkyWatch 3D</div></header>
 
   <div class="search-area">
     <div class="search-box">
-      <input id="cityInput" type="text" placeholder="Enter city name..." autocomplete="off">
+      <input id="cityInput" type="text" placeholder="Enter city..." autocomplete="off">
       <button onclick="getWeather()">Search</button>
     </div>
     <div id="suggestions"></div>
@@ -152,20 +70,16 @@
 
   <div class="main-grid">
     <div class="card">
-      <div id="placeholder" class="empty-state">
-        <p>Search for a location to view atmospheric details</p>
-      </div>
-      
+      <div id="placeholder" style="padding:40px; text-align:center; color:var(--muted);">Search a city to see 3D weather data</div>
       <div id="weatherPanel" class="w-panel">
         <div class="w-top">
-          <p id="cityTitle" class="city-label"></p>
+          <p id="cityTitle" style="color:var(--accent); letter-spacing:2px; font-weight:bold;"></p>
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h1 id="tempVal" class="temp-display">--°</h1>
-            <img id="wIcon" src="" style="width: 80px;">
+            <h1 id="tempVal" class="temp-big">--°</h1>
+            <img id="wIcon" src="" style="width:70px;">
           </div>
-          <p id="wDesc" class="desc"></p>
+          <p id="wDesc" style="text-transform:capitalize; color:var(--muted);"></p>
         </div>
-        
         <div class="stats-grid">
           <div class="stat-item"><div class="stat-label">Humidity</div><div class="stat-val" id="humVal">--</div></div>
           <div class="stat-item"><div class="stat-label">Wind</div><div class="stat-val" id="windVal">--</div></div>
@@ -175,28 +89,26 @@
       </div>
     </div>
 
-    <div class="card" style="border:none;">
-      <div id="map"></div>
-    </div>
+    <div class="card"><div id="map"></div></div>
   </div>
 </div>
 
 <script>
-  // API Keys
-  const WEATHER_API = '6fc7ab730ad632df5a169986dcef4805';
-  maptilerjs.config.apiKey = '8Bf9fWpZpZ9uX9Y9z9X9'; // Get your own at maptiler.com
+  // Replace this key if the map is still blank!
+  maptilerjs.config.apiKey = 'VCdMhUr0QcAVS4RKSIlp'; 
 
-  // Initialize 3D Vector Map
   const map = new maptilerjs.Map({
     container: 'map',
-    style: maptilerjs.MapStyle.DATAVIZ.DARK,
+    style: maptilerjs.MapStyle.STREETS.DARK,
     center: [0, 20],
     zoom: 1.5,
-    terrain: true,
-    terrainControl: true
+    projection: 'globe', // Forced 3D Globe view
+    terrain: true
   });
 
-  // Handle Search Suggestions
+  map.on('load', () => { console.log("Map Loaded Successfully"); });
+  map.on('error', () => { alert("Map failed to load. Please check your MapTiler API Key."); });
+
   const input = document.getElementById('cityInput');
   const suggs = document.getElementById('suggestions');
 
@@ -218,10 +130,9 @@
 
   async function fetchWeather(lat, lon) {
     document.getElementById('placeholder').style.display = 'none';
-    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API}`);
+    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=6fc7ab730ad632df5a169986dcef4805`);
     const d = await res.json();
 
-    // UI Update
     document.getElementById('cityTitle').innerText = d.name;
     document.getElementById('tempVal').innerText = Math.round(d.main.temp) + "°";
     document.getElementById('humVal').innerText = d.main.humidity + "%";
@@ -230,18 +141,9 @@
     document.getElementById('visVal').innerText = (d.visibility/1000).toFixed(1) + " km";
     document.getElementById('wDesc').innerText = d.weather[0].description;
     document.getElementById('wIcon').src = `https://openweathermap.org/img/wn/${d.weather[0].icon}@2x.png`;
-
     document.getElementById('weatherPanel').classList.add('active');
 
-    // 3D Map Fly-To
-    map.flyTo({
-      center: [lon, lat],
-      zoom: 12,
-      pitch: 60, // Tilts the map for 3D view
-      bearing: -20,
-      essential: true,
-      duration: 3000
-    });
+    map.flyTo({ center: [lon, lat], zoom: 14, pitch: 70, bearing: 40, duration: 4000 });
   }
 
   function getWeather() {
@@ -252,4 +154,3 @@
 </script>
 </body>
 </html>
-```
