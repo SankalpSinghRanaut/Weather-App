@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SkyWatch — Weather Forecast</title>
 
-  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 
-  <!-- Leaflet Map (free, no API key) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -61,7 +59,7 @@
     /* ── APP SHELL ── */
     .app {
       position:relative; z-index:1;
-      max-width: 860px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 44px 20px 64px;
       display: flex;
@@ -89,7 +87,8 @@
 
     /* ── SEARCH ── */
     .search-wrap {
-      width:100%; max-width:520px; margin-bottom:28px;
+      width:100%; max-width:520px; 
+      margin-bottom:48px; /* Added spacing between search and cards */
       animation: fadeDown .8s .1s ease both;
       position: relative;
     }
@@ -100,6 +99,7 @@
       backdrop-filter:blur(14px);
       transition:border-color .25s, box-shadow .25s;
       position: relative;
+      z-index: 20;
     }
     .search-inner:focus-within {
       border-color:rgba(125,211,252,.45);
@@ -122,30 +122,45 @@
     .search-inner button:hover  { opacity:.85; }
     .search-inner button:active { transform:scale(.96); }
 
-    /* Suggestions dropdown */
-   .suggestions-dropdown {
-  max-height: 120px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
+    /* Improved Suggestions Dropdown */
+    #suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      background: #111827; 
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      margin-top: 12px;
+      max-height: 150px; /* Limits to ~2.5 items before scroll triggers */
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      display: none;
+    }
+    #suggestions::-webkit-scrollbar { width: 6px; }
+    #suggestions::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
 
-.suggestions-dropdown div {
-  padding: 10px;
-  cursor: pointer;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
+    #suggestions div {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    #suggestions div:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    #suggestions div:last-child { border-bottom: none; }
 
-.suggestions-dropdown div:hover {
-  background: rgba(255,255,255,0.08);
-}
     /* ── TWO COLUMN LAYOUT ── */
     .main-grid {
       width:100%; display:grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 24px; /* Space between Map and Info box */
       animation: fadeUp .7s .2s ease both;
     }
-    @media (max-width:640px) {
+    @media (max-width:768px) {
       .main-grid { grid-template-columns:1fr; }
     }
 
@@ -155,7 +170,6 @@
       border-radius:24px; backdrop-filter:blur(20px);
       overflow:hidden; transition:box-shadow .4s;
     }
-    .card.loaded { box-shadow:0 20px 60px rgba(0,0,0,.45), 0 0 0 1px var(--card-border); }
 
     /* ── WEATHER CARD (left) ── */
     .weather-card { display:flex; flex-direction:column; }
@@ -205,7 +219,7 @@
       font-size:clamp(4rem,12vw,5.5rem);
       line-height:1; letter-spacing:-.04em;
     }
-    .temp-unit-sup { font-size:.32em; vertical-align:super; color:var(--muted); }
+    .temp-unit-sup { font-size:.32em; vertical-align:super; color:var(--muted); font-family: 'DM Sans', sans-serif; }
     .w-icon { width:84px; height:84px; filter:drop-shadow(0 4px 14px rgba(125,211,252,.4)); }
 
     .condition  { font-size:.95rem; color:var(--muted); font-style:italic; text-transform:capitalize; }
@@ -262,19 +276,19 @@
     }
     .forecast-row::-webkit-scrollbar { display:none; }
     .fc {
-      flex:1; min-width:58px; max-width:80px;
+      flex:1; min-width:65px; max-width:80px;
       display:flex; flex-direction:column; align-items:center;
       padding:8px 6px; border-radius:14px;
       transition:background .2s;
       cursor:default;
     }
     .fc:hover { background:rgba(125,211,252,.06); }
-    .fc-day { font-size:.68rem; color:var(--muted); margin-bottom:2px; }
+    .fc-day { font-size:.68rem; color:var(--muted); margin-bottom:2px; text-transform: uppercase; }
     .fc-icon { width:34px; height:34px; }
     .fc-temp { font-family:'DM Serif Display',serif; font-size:.95rem; margin-top:2px; }
 
     /* ── MAP CARD (right) ── */
-    .map-card { display:flex; flex-direction:column; min-height:360px; }
+    .map-card { display:flex; flex-direction:column; min-height:360px; height: 100%; }
     .map-header {
       padding:20px 24px 14px;
       font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
@@ -285,6 +299,7 @@
     #map {
       flex:1; min-height:300px;
       border-radius:0 0 24px 24px;
+      z-index: 1;
     }
     /* Leaflet popup dark style */
     .leaflet-popup-content-wrapper {
@@ -325,13 +340,11 @@
 
 <div class="app">
 
-  <!-- HEADER -->
   <header>
     <div class="brand">SkyWatch</div>
     <div class="brand-sub">Weather Forecast Application</div>
   </header>
 
-  <!-- SEARCH -->
   <div class="search-wrap">
     <div class="search-inner">
       <input id="cityInput" type="text" placeholder="Search city or town…" autocomplete="off">
@@ -339,23 +352,11 @@
     </div>
     <div id="suggestions"></div>
   </div>
-  <div id="suggestions" class="suggestions-dropdown"
-style="
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  margin-top: 10px;
-  max-height: 120px;
-  overflow-y: auto;
-"></div>
 
-  <!-- TWO-COLUMN GRID -->
   <div class="main-grid">
 
-    <!-- LEFT: WEATHER CARD -->
     <div class="card weather-card" id="weatherCard">
 
-      <!-- Placeholder -->
       <div class="state-block active" id="statePlaceholder">
         <div class="placeholder">
           <div class="placeholder-icon">🌤️</div>
@@ -363,7 +364,6 @@ style="
         </div>
       </div>
 
-      <!-- Loading -->
       <div class="state-block" id="stateLoading">
         <div class="loading-state">
           <div class="spinner"></div>
@@ -371,7 +371,6 @@ style="
         </div>
       </div>
 
-      <!-- Error -->
       <div class="state-block" id="stateError">
         <div class="error-toast" id="errorMsg">City not found.</div>
         <div class="placeholder" style="padding-top:8px">
@@ -380,7 +379,6 @@ style="
         </div>
       </div>
 
-      <!-- Weather Data -->
       <div class="w-content" id="wContent">
 
         <div class="card-top">
@@ -452,13 +450,11 @@ style="
           </div>
         </div>
 
-        <!-- Forecast injected here -->
         <div id="forecastContainer"></div>
 
-      </div><!-- /w-content -->
-    </div><!-- /weather-card -->
+      </div>
+    </div>
 
-    <!-- RIGHT: MAP CARD -->
     <div class="card map-card" id="mapCard">
       <div class="map-header">
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
@@ -466,15 +462,12 @@ style="
       </div>
       <div id="map"></div>
     </div>
-    <div style="width:100%; max-width:480px; margin:30px 0;">
-  <div id="map" style="height:250px; border-radius:16px;"></div>
-</div>
 
-  </div><!-- /main-grid -->
+  </div>
 
   <footer>Powered by OpenWeatherMap &amp; OpenStreetMap · BCA Project 2025–26</footer>
 
-</div><!-- /app -->
+</div>
 
 <script>
 /* ═══════════════════════════════════════════════
@@ -518,44 +511,11 @@ const pinIcon = L.divIcon({
 
 let marker=null;
 
-function updateMap(lat, lon, city, temp, icon){
+function updateMap(lat, lon, city, temp){
   if(marker) map.removeLayer(marker);
-
-  marker = L.marker([lat,lon],{icon:pinIcon})
-    .addTo(map)
-    .bindPopup(`<b>${city}</b><br>${temp}°C`)
-    .openPopup();
-
+  marker = L.marker([lat,lon],{icon:pinIcon}).addTo(map).bindPopup(`<b>${city}</b><br>${temp}°C`).openPopup();
   map.flyTo([lat,lon],11,{duration:1.2});
 }
-
-/* ═══════════════════════════════════════════════
-   MAP CLICK → FETCH WEATHER
-═══════════════════════════════════════════════ */
-map.on('click', async function(e){
-  const lat = e.latlng.lat;
-  const lon = e.latlng.lng;
-
-  if(fetching) return;
-
-  fetching = true;
-  showState('loading');
-
-  try{
-    const geoRes = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-    );
-    const geoData = await geoRes.json();
-
-    const name = geoData.display_name || "Selected Location";
-
-    getWeatherByCoords(lat, lon, name);
-
-  }catch{
-    showError("Map click failed");
-    fetching = false;
-  }
-});
 
 /* ═══════════════════════════════════════════════
    CITY SUGGESTIONS
@@ -567,23 +527,41 @@ let timer;
 cityInput.addEventListener('input', function(){
   clearTimeout(timer);
   const q=this.value.trim();
-  if(q.length<2){suggestionsBox.innerHTML='';return;}
+  if(q.length<2){
+    suggestionsBox.innerHTML='';
+    suggestionsBox.style.display='none';
+    return;
+  }
 
   timer=setTimeout(async()=>{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`);
-    const d=await r.json();
-
-    suggestionsBox.innerHTML=d.map(p=>
-      `<div onclick="pickCity('${p.display_name.replace(/'/g,"")}',${p.lat},${p.lon})">${p.display_name}</div>`
-    ).join('');
-  },300);
+    try {
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`);
+      const d=await r.json();
+      if(d.length > 0){
+        suggestionsBox.innerHTML=d.map(p=>
+          `<div onclick="pickCity('${p.display_name.replace(/'/g,"")}',${p.lat},${p.lon})">${p.display_name}</div>`
+        ).join('');
+        suggestionsBox.style.display='block';
+      } else {
+        suggestionsBox.style.display='none';
+      }
+    } catch (e) { suggestionsBox.style.display='none'; }
+  },400);
 });
 
 function pickCity(name,lat,lon){
   cityInput.value=name;
   suggestionsBox.innerHTML='';
+  suggestionsBox.style.display='none';
   getWeatherByCoords(lat,lon,name);
 }
+
+// Close suggestions on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-wrap')) {
+    suggestionsBox.style.display = 'none';
+  }
+});
 
 /* ═══════════════════════════════════════════════
    WEATHER LOGIC
@@ -594,76 +572,85 @@ let fetching=false;
 async function getWeather(){
   const city=cityInput.value.trim();
   if(!city) return;
-
-  const geo=await fetch(`https://nominatim.openstreetmap.org/search?q=${city}&format=json&limit=1`);
-  const data=await geo.json();
-
-  if(!data.length){showError("City not found");return;}
-
-  getWeatherByCoords(data[0].lat,data[0].lon,data[0].display_name);
+  showState('stateLoading');
+  try {
+    const geo=await fetch(`https://nominatim.openstreetmap.org/search?q=${city}&format=json&limit=1`);
+    const data=await geo.json();
+    if(!data.length){showError("City not found");return;}
+    getWeatherByCoords(data[0].lat,data[0].lon,data[0].display_name);
+  } catch(e) { showError("Search failed"); }
 }
 
 async function getWeatherByCoords(lat,lon,label){
+  fetching=true;
+  showState('stateLoading');
   try{
     const res=await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
     const d=await res.json();
-
-    renderWeather(d);
+    renderWeather(d, label);
     fetchForecast(lat,lon);
-    updateMap(lat,lon,label,Math.round(d.main.temp),d.weather[0].icon);
-
+    updateMap(lat,lon,label,Math.round(d.main.temp));
     localStorage.setItem("lastCity",label);
-    cityInput.value=label;
-
     showState('data');
-  }catch{
-    showError("API error");
-  }
+  }catch{ showError("API error"); }
   fetching=false;
 }
 
-/* ═══════════════════════════════════════════════
-   RENDER WEATHER
-═══════════════════════════════════════════════ */
-function renderWeather(d){
+function renderWeather(d, label){
   document.getElementById('cityDisplay').textContent=d.name;
-  document.getElementById('tempDisplay').innerHTML=`${Math.round(d.main.temp)}°`;
+  document.getElementById('dateDisplay').textContent=new Date().toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+  document.getElementById('tempDisplay').innerHTML=`${Math.round(d.main.temp)}<span class="temp-unit-sup">°C</span>`;
   document.getElementById('condition').textContent=d.weather[0].description;
+  document.getElementById('weatherIcon').src=`https://openweathermap.org/img/wn/${d.weather[0].icon}@2x.png`;
+  document.getElementById('feelsLike').textContent=`Feels like ${Math.round(d.main.feels_like)}°C`;
+  
+  document.getElementById('humidity').innerHTML=`${d.main.humidity}<span class="su">%</span>`;
+  document.getElementById('pressure').innerHTML=`${d.main.pressure}<span class="su">hPa</span>`;
+  document.getElementById('windSpeed').innerHTML=`${Math.round(d.wind.speed * 3.6)}<span class="su">km/h</span>`;
+  document.getElementById('visibility').innerHTML=`${(d.visibility/1000).toFixed(1)}<span class="su">km</span>`;
+
+  const formatTime = (ts) => new Date(ts * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  document.getElementById('sunrise').textContent = formatTime(d.sys.sunrise);
+  document.getElementById('sunset').textContent = formatTime(d.sys.sunset);
 }
 
-/* ═══════════════════════════════════════════════
-   FORECAST
-═══════════════════════════════════════════════ */
 async function fetchForecast(lat,lon){
-  const r=await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}`);
+  const r=await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
   const d=await r.json();
+  const days=d.list.filter((_,i)=>i%8===0).slice(0,5);
 
-  const days=d.list.filter((_,i)=>i%8===0).slice(1,6);
-
-  document.getElementById('forecastContainer').innerHTML=days.map(day=>
-    `<div>${new Date(day.dt*1000).toDateString()} - ${Math.round(day.main.temp)}°</div>`
-  ).join('');
+  document.getElementById('forecastContainer').innerHTML = `
+    <div class="forecast-title">5-Day Forecast</div>
+    <div class="forecast-row">
+      ${days.map(day => `
+        <div class="fc">
+          <div class="fc-day">${new Date(day.dt*1000).toLocaleDateString('en-US',{weekday:'short'})}</div>
+          <img class="fc-icon" src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png">
+          <div class="fc-temp">${Math.round(day.main.temp)}°</div>
+        </div>
+      `).join('')}
+    </div>`;
 }
 
-/* ═══════════════════════════════════════════════
-   STATE
-═══════════════════════════════════════════════ */
 function showState(s){
-  document.getElementById('stateLoading').style.display=s==='loading'?'block':'none';
+  document.getElementById('statePlaceholder').classList.remove('active');
+  document.getElementById('stateLoading').classList.remove('active');
+  document.getElementById('stateError').classList.remove('active');
+  document.getElementById('wContent').classList.remove('show');
+
+  if(s==='data') document.getElementById('wContent').classList.add('show');
+  else document.getElementById(s).classList.add('active');
 }
 
 function showError(msg){
-  alert(msg);
+  document.getElementById('errorMsg').textContent=msg;
+  showState('stateError');
 }
 
-/* ═══════════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════════ */
 window.onload=()=>{
   const last=localStorage.getItem("lastCity");
-  if(last) cityInput.value=last;
+  if(last) { cityInput.value=last; getWeather(); }
 };
 </script>
-
 </body>
 </html>
